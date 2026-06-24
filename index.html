@@ -65,7 +65,7 @@
             min-height: 20px;
         }
 
-        /* ANA EKRAN (başlangıçta gizli) */
+        /* ANA EKRAN */
         #mainApp {
             display: none;
             background: white;
@@ -112,8 +112,8 @@
             transform: scale(0.98);
             pointer-events: none;
         }
-        .btn-women { background: #e91e63; }  /* Hanımlar pembe */
-        .btn-men   { background: #1e88e5; }  /* Erkekler mavi */
+        .btn-women { background: #e91e63; }  /* Hanımlar */
+        .btn-men   { background: #1e88e5; }  /* Erkekler */
 
         #status {
             margin-top: 25px;
@@ -152,8 +152,8 @@
         <div class="sub">Kapı Otomatı</div>
 
         <div class="button-group">
-            <button class="btn-door btn-women" id="btnWomen" onclick="triggerDoor('Hanımlar')">👩 Hanımlar</button>
-            <button class="btn-door btn-men" id="btnMen" onclick="triggerDoor('Erkekler')">👨 Erkekler</button>
+            <button class="btn-door btn-women" id="btnWomen" onclick="triggerDoor('Hanımlar', 2)">👩 Hanımlar</button>
+            <button class="btn-door btn-men" id="btnMen" onclick="triggerDoor('Erkekler', 3)">👨 Erkekler</button>
         </div>
 
         <div id="status">Hazır</div>
@@ -161,10 +161,10 @@
 
     <script>
         // ----------- AYARLAR -----------
-        const DOOR_PIN = 2;               // Röle bağlı GPIO pini
         const API_KEY = "C9F3F30A218E7C9F160E12644B9E2AB8";
         const BASE_URL = "https://us01.proxy.teleduino.org/api/1.0/328.php";
-        const SECRET_PIN = "1234";        // <-- İstediğiniz şifreyi buraya yazın
+        const SECRET_PIN = "1234";        // <-- İstediğiniz şifre
+        const HOLD_TIME = 1000;           // 1 saniye (1000ms)
         // ------------------------------
 
         let timer = null;
@@ -187,59 +187,57 @@
             }
         }
 
-        // Enter tuşuna basınca PIN göndersin
         document.getElementById('pinInput').addEventListener('keydown', (e) => {
             if (e.key === 'Enter') checkPin();
         });
 
-        // Kapıyı tetikle (AÇ -> 3sn sonra KAPA)
-        function triggerDoor(label) {
+        // Kapıyı tetikle (belirtilen pin'de AÇ -> 1sn sonra KAPA)
+        function triggerDoor(label, pin) {
             // Önceki zamanlayıcıyı temizle
             if (timer) {
                 clearTimeout(timer);
                 timer = null;
             }
 
-            // Butonları devre dışı bırak (spam önleme)
+            // Tüm butonları devre dışı bırak (spam önleme)
             btnWomen.disabled = true;
             btnMen.disabled = true;
 
             // 1. AÇ komutu (output=2)
-            setOutput(2)
+            setOutput(pin, 2)
                 .then(() => {
-                    statusEl.textContent = `🚪 ${label} kapısı AÇILDI, 3 saniye sonra kapanacak...`;
+                    statusEl.textContent = `🚪 ${label} (Pin ${pin}) AÇILDI, 1 saniye sonra kapanacak...`;
                     statusEl.className = 'status-success';
 
-                    // 2. 3 saniye sonra KAPA (output=1)
+                    // 2. 1 saniye sonra KAPA (output=1)
                     timer = setTimeout(() => {
-                        setOutput(1)
+                        setOutput(pin, 1)
                             .then(() => {
-                                statusEl.textContent = `🔒 ${label} kapısı kapandı.`;
+                                statusEl.textContent = `🔒 ${label} (Pin ${pin}) kapandı.`;
                                 statusEl.className = 'status-closing';
-                                // Butonları tekrar aktif et
                                 btnWomen.disabled = false;
                                 btnMen.disabled = false;
                             })
                             .catch(err => {
-                                statusEl.textContent = `❌ Kapatma hatası: ${err.message}`;
+                                statusEl.textContent = `❌ Kapatma hatası (Pin ${pin}): ${err.message}`;
                                 statusEl.className = 'status-error';
                                 btnWomen.disabled = false;
                                 btnMen.disabled = false;
                             });
                         timer = null;
-                    }, 3000); // 3 saniye
+                    }, HOLD_TIME); // 1 saniye
                 })
                 .catch(err => {
-                    statusEl.textContent = `❌ Açma hatası: ${err.message}`;
+                    statusEl.textContent = `❌ Açma hatası (Pin ${pin}): ${err.message}`;
                     statusEl.className = 'status-error';
                     btnWomen.disabled = false;
                     btnMen.disabled = false;
                 });
         }
 
-        // Teleduino API'sine istek atan fonksiyon
-        function setOutput(outputValue) {
-            const url = `${BASE_URL}?k=${API_KEY}&r=setDigitalOutput&pin=${DOOR_PIN}&output=${outputValue}&expire_time=0&save=1`;
+        // Teleduino API'sine istek atan fonksiyon (pin parametresi eklendi)
+        function setOutput(pin, outputValue) {
+            const url = `${BASE_URL}?k=${API_KEY}&r=setDigitalOutput&pin=${pin}&output=${outputValue}&expire_time=0&save=1`;
             return fetch(url)
                 .then(res => {
                     if (!res.ok) throw new Error(`HTTP ${res.status}`);
