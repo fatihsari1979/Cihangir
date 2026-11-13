@@ -17,7 +17,6 @@
         padding: 20px 0;
     }
 
-    /* ---------- PIN EKRANI ---------- */
     #pinScreen {
         background: white;
         padding: 40px 30px;
@@ -61,7 +60,6 @@
         min-height: 20px;
     }
 
-    /* ---------- ANA EKRAN ---------- */
     #mainApp {
         display: none;
         background: white;
@@ -142,8 +140,8 @@
     <div class="sub">Kapı Otomatı</div>
 
     <div class="button-group">
-        <button class="btn-door btn-women" id="btnWomen" data-label="Hanımlar" data-pin="2">👩 Hanımlar</button>
-        <button class="btn-door btn-men"   id="btnMen"   data-label="Erkekler" data-pin="3">👨 Erkekler</button>
+        <button class="btn-door btn-women" id="btnWomen">👩 Hanımlar</button>
+        <button class="btn-door btn-men"   id="btnMen">👨 Erkekler</button>
     </div>
 
     <div id="status">Hazır</div>
@@ -157,16 +155,19 @@ const CFG = {
 
     SECRET_PIN: "1234",
 
-    // Röle seviyeleri:
-    // Çoğu röle kartı AKTİF-DÜŞÜK'tür (idle = HIGH, aktif = LOW).
-    // Kapı açılmıyorsa bu iki değeri ters çevir (OPEN=1, CLOSE=0).
+    // Röle seviyeleri (kapı açılmıyorsa 0 ve 1'i ters çevir)
     OPEN_OUTPUT: 0,     // LOW  -> röle çeker, kapı açılır
     CLOSE_OUTPUT: 1,    // HIGH -> röle bırakır, kapı kapanır
 
-    HOLD_SECONDS: 1,          // donanım tarafında otomatik kapanma süresi
-    REQUEST_TIMEOUT_MS: 6000, // tek istek için üst sınır
-    COOLDOWN_MS: 1200,        // butonların tekrar aktif olma süresi
-    STATUS_RESET_MS: 2500     // "Hazır" yazısına dönüş
+    REQUEST_TIMEOUT_MS: 6000,
+    COOLDOWN_MS: 1200,
+    STATUS_RESET_MS: 2500
+};
+
+// Her kapı: pin numarası ve açık kalma süresi (saniye)
+const DOORS = {
+    women: { label: 'Hanımlar', pin: 2, hold: 3 },  // 2 sn -> 3 sn
+    men:   { label: 'Erkekler', pin: 4, hold: 2 }   // pin 3 -> pin 4 (Arduino 4. pin)
 };
 /* ============================================ */
 
@@ -224,7 +225,7 @@ function unlock() {
     pinInput.value          = '';
 }
 
-pinBtn.addEventListener('click', checkPin);
+document.getElementById('pinBtn').addEventListener('click', checkPin);
 pinInput.addEventListener('keydown', e => { if (e.key === 'Enter') checkPin(); });
 
 // Sayfa yenilenirse tekrar PIN sormasın (sekme kapanınca silinir)
@@ -268,36 +269,38 @@ async function setOutput(pin, output, expireTime = 0) {
 
 /* ---------------- Kapı tetikleme ---------------- */
 
-async function triggerDoor(label, pin) {
+async function triggerDoor(doorKey) {
     if (busy) return;
+
+    const door = DOORS[doorKey];
+    if (!door) return;
+
     busy = true;
     setButtons(false);
-    setStatus(`⏳ ${label} açılıyor...`, 'status-loading');
+    setStatus(`⏳ ${door.label} açılıyor...`, 'status-loading');
     vibrate(30);
 
     try {
-        // AÇ: expire_time sayesinde donanım HOLD_SECONDS sonra kendisi kapatır
-        await setOutput(pin, CFG.OPEN_OUTPUT, CFG.HOLD_SECONDS);
+        // AÇ: expire_time sayesinde donanım 'hold' saniye sonra kendisi kapatır
+        await setOutput(door.pin, CFG.OPEN_OUTPUT, door.hold);
 
-        setStatus(`🚪 ${label} açıldı — ${CFG.HOLD_SECONDS} sn sonra kapanacak`, 'status-success');
+        setStatus(`🚪 ${door.label} açıldı — ${door.hold} sn sonra kapanacak`, 'status-success');
         vibrate([20, 60, 20]);
 
         // Bilgi amaçlı: kapanış bilgisini gecikmeli göster
         setTimeout(() => {
-            if (!busy) return;
-            setStatus(`🔒 ${label} kapatıldı`, 'status-closing');
+            setStatus(`🔒 ${door.label} kapatıldı`, 'status-closing');
             resetStatusLater(CFG.STATUS_RESET_MS);
-        }, CFG.HOLD_SECONDS * 1000 + 300);
+        }, door.hold * 1000 + 300);
 
     } catch (err) {
-        setStatus(`❌ ${label}: ${err.message}`, 'status-error');
+        setStatus(`❌ ${door.label}: ${err.message}`, 'status-error');
         vibrate([80, 50, 80]);
-        // Güvenlik: açma isteği yarıda kaldıysa kapatmayı dene
-        setOutput(pin, CFG.CLOSE_OUTPUT, 0).catch(() => {});
+        // Güvenlik: açma yarıda kaldıysa kapatmayı dene
+        setOutput(door.pin, CFG.CLOSE_OUTPUT, 0).catch(() => {});
         resetStatusLater(CFG.STATUS_RESET_MS);
 
     } finally {
-        // Butonlar her durumda geri açılır (catch içinde tekrar etmeye gerek yok)
         setTimeout(() => {
             busy = false;
             setButtons(true);
@@ -305,11 +308,8 @@ async function triggerDoor(label, pin) {
     }
 }
 
-allBtns.forEach(btn => {
-    btn.addEventListener('click', () => {
-        triggerDoor(btn.dataset.label, btn.dataset.pin);
-    });
-});
+btnWomen.addEventListener('click', () => triggerDoor('women'));
+btnMen.addEventListener('click',   () => triggerDoor('men'));
 </script>
 </body>
 </html>
