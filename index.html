@@ -1,256 +1,315 @@
 <!DOCTYPE html>
 <html lang="tr">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Cihangir Kapı</title>
-    <style>
-        * { box-sizing: border-box; margin: 0; }
-        body {
-            font-family: -apple-system, sans-serif;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            min-height: 100vh;
-            background: #e8eaed;
-            margin: 0;
-        }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cihangir Kapı</title>
+<style>
+    * { box-sizing: border-box; margin: 0; }
+    body {
+        font-family: -apple-system, sans-serif;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        min-height: 100vh;
+        background: #e8eaed;
+        margin: 0;
+        padding: 20px 0;
+    }
 
-        /* PIN EKRANI */
-        #pinScreen {
-            background: white;
-            padding: 40px 30px;
-            border-radius: 32px;
-            box-shadow: 0 10px 40px rgba(0,0,0,0.15);
-            text-align: center;
-            width: 90%;
-            max-width: 360px;
-        }
-        #pinScreen h2 {
-            margin-bottom: 20px;
-            color: #1a1a1a;
-        }
-        #pinScreen input {
-            width: 100%;
-            padding: 16px;
-            font-size: 20px;
-            text-align: center;
-            letter-spacing: 8px;
-            border: 2px solid #ddd;
-            border-radius: 14px;
-            outline: none;
-            transition: 0.2s;
-        }
-        #pinScreen input:focus {
-            border-color: #1a73e8;
-        }
-        #pinScreen button {
-            margin-top: 20px;
-            width: 100%;
-            padding: 16px;
-            font-size: 18px;
-            font-weight: 600;
-            background: #1a73e8;
-            color: white;
-            border: none;
-            border-radius: 14px;
-            cursor: pointer;
-            transition: 0.2s;
-        }
-        #pinScreen button:active { transform: scale(0.96); }
-        #pinError {
-            color: #d93025;
-            margin-top: 12px;
-            font-size: 14px;
-            min-height: 20px;
-        }
+    /* ---------- PIN EKRANI ---------- */
+    #pinScreen {
+        background: white;
+        padding: 40px 30px;
+        border-radius: 32px;
+        box-shadow: 0 10px 40px rgba(0,0,0,0.15);
+        text-align: center;
+        width: 90%;
+        max-width: 360px;
+    }
+    #pinScreen h2 { margin-bottom: 20px; color: #1a1a1a; }
+    #pinScreen input {
+        width: 100%;
+        padding: 16px;
+        font-size: 20px;
+        text-align: center;
+        letter-spacing: 8px;
+        border: 2px solid #ddd;
+        border-radius: 14px;
+        outline: none;
+        transition: 0.2s;
+    }
+    #pinScreen input:focus { border-color: #1a73e8; }
+    #pinScreen button {
+        margin-top: 20px;
+        width: 100%;
+        padding: 16px;
+        font-size: 18px;
+        font-weight: 600;
+        background: #1a73e8;
+        color: white;
+        border: none;
+        border-radius: 14px;
+        cursor: pointer;
+        transition: 0.2s;
+    }
+    #pinScreen button:active { transform: scale(0.96); }
+    #pinError {
+        color: #d93025;
+        margin-top: 12px;
+        font-size: 14px;
+        min-height: 20px;
+    }
 
-        /* ANA EKRAN */
-        #mainApp {
-            display: none;
-            background: white;
-            padding: 30px 20px 35px;
-            border-radius: 32px;
-            box-shadow: 0 10px 40px rgba(0,0,0,0.12);
-            text-align: center;
-            width: 90%;
-            max-width: 400px;
-        }
-        #mainApp h1 {
-            font-size: 26px;
-            color: #1a1a1a;
-            margin-bottom: 6px;
-        }
-        .sub {
-            color: #888;
-            font-size: 14px;
-            margin-bottom: 25px;
-        }
-        .button-group {
-            display: flex;
-            gap: 15px;
-            flex-wrap: wrap;
-            justify-content: center;
-        }
-        .btn-door {
-            flex: 1;
-            min-width: 130px;
-            padding: 22px 0;
-            font-size: 20px;
-            font-weight: 600;
-            border: none;
-            border-radius: 20px;
-            color: white;
-            cursor: pointer;
-            transition: transform 0.15s, opacity 0.2s;
-            touch-action: manipulation;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
-        }
-        .btn-door:active { transform: scale(0.93); }
-        .btn-door:disabled {
-            opacity: 0.5;
-            transform: scale(0.98);
-            pointer-events: none;
-        }
-        .btn-women { background: #e91e63; }  /* Hanımlar */
-        .btn-men   { background: #1e88e5; }  /* Erkekler */
+    /* ---------- ANA EKRAN ---------- */
+    #mainApp {
+        display: none;
+        background: white;
+        padding: 30px 20px 35px;
+        border-radius: 32px;
+        box-shadow: 0 10px 40px rgba(0,0,0,0.12);
+        text-align: center;
+        width: 90%;
+        max-width: 400px;
+    }
+    #mainApp h1 { font-size: 26px; color: #1a1a1a; margin-bottom: 6px; }
+    .sub { color: #888; font-size: 14px; margin-bottom: 25px; }
 
-        #status {
-            margin-top: 25px;
-            padding: 14px;
-            border-radius: 16px;
-            font-size: 15px;
-            font-weight: 500;
-            background: #f1f3f4;
-            color: #3c4043;
-            transition: all 0.3s;
-            min-height: 52px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 8px;
-        }
-        .status-loading { background: #fff3cd; color: #856404; }
-        .status-success { background: #d4edda; color: #155724; }
-        .status-error   { background: #f8d7da; color: #721c24; }
-        .status-closing { background: #cce5ff; color: #004085; }
-    </style>
+    .button-group {
+        display: flex;
+        gap: 15px;
+        flex-wrap: wrap;
+        justify-content: center;
+    }
+    .btn-door {
+        flex: 1;
+        min-width: 130px;
+        padding: 22px 0;
+        font-size: 20px;
+        font-weight: 600;
+        border: none;
+        border-radius: 20px;
+        color: white;
+        cursor: pointer;
+        transition: transform 0.15s, opacity 0.2s;
+        touch-action: manipulation;
+        box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+    }
+    .btn-door:active { transform: scale(0.93); }
+    .btn-door:disabled {
+        opacity: 0.5;
+        transform: scale(0.98);
+        pointer-events: none;
+    }
+    .btn-women { background: #e91e63; }
+    .btn-men   { background: #1e88e5; }
+
+    #status {
+        margin-top: 25px;
+        padding: 14px;
+        border-radius: 16px;
+        font-size: 15px;
+        font-weight: 500;
+        background: #f1f3f4;
+        color: #3c4043;
+        transition: all 0.3s;
+        min-height: 52px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+    }
+    .status-loading { background: #fff3cd; color: #856404; }
+    .status-success { background: #d4edda; color: #155724; }
+    .status-error   { background: #f8d7da; color: #721c24; }
+    .status-closing { background: #cce5ff; color: #004085; }
+</style>
 </head>
 <body>
 
-    <!-- PIN EKRANI -->
-    <div id="pinScreen">
-        <h2>🔐 Yetki Kodu</h2>
-        <input type="password" id="pinInput" maxlength="6" placeholder="PIN Girin" inputmode="numeric">
-        <button onclick="checkPin()">Giriş Yap</button>
-        <div id="pinError"></div>
+<!-- ================= PIN EKRANI ================= -->
+<div id="pinScreen">
+    <h2>🔐 Yetki Kodu</h2>
+    <input type="password" id="pinInput" maxlength="6"
+           placeholder="PIN Girin" inputmode="numeric" autocomplete="off">
+    <button id="pinBtn">Giriş Yap</button>
+    <div id="pinError"></div>
+</div>
+
+<!-- ================= ANA UYGULAMA ================= -->
+<div id="mainApp">
+    <h1>🚪 Cihangir</h1>
+    <div class="sub">Kapı Otomatı</div>
+
+    <div class="button-group">
+        <button class="btn-door btn-women" id="btnWomen" data-label="Hanımlar" data-pin="2">👩 Hanımlar</button>
+        <button class="btn-door btn-men"   id="btnMen"   data-label="Erkekler" data-pin="3">👨 Erkekler</button>
     </div>
 
-    <!-- ANA UYGULAMA -->
-    <div id="mainApp">
-        <h1>🚪 Cihangir</h1>
-        <div class="sub">Kapı Otomatı</div>
+    <div id="status">Hazır</div>
+</div>
 
-        <div class="button-group">
-            <button class="btn-door btn-women" id="btnWomen" onclick="triggerDoor('Hanımlar', 2)">👩 Hanımlar</button>
-            <button class="btn-door btn-men" id="btnMen" onclick="triggerDoor('Erkekler', 3)">👨 Erkekler</button>
-        </div>
+<script>
+/* ================== AYARLAR ================== */
+const CFG = {
+    API_KEY: "C9F3F30A218E7C9F160E12644B9E2AB8",
+    BASE_URL: "https://us01.proxy.teleduino.org/api/1.0/328.php",
 
-        <div id="status">Hazır</div>
-    </div>
+    SECRET_PIN: "1234",
 
-    <script>
-        // ----------- AYARLAR -----------
-        const API_KEY = "C9F3F30A218E7C9F160E12644B9E2AB8";
-        const BASE_URL = "https://us01.proxy.teleduino.org/api/1.0/328.php";
-        const SECRET_PIN = "1234";        // <-- İstediğiniz şifre
-        const HOLD_TIME = 1000;           // 1 saniye (1000ms)
-        // ------------------------------
+    // Röle seviyeleri:
+    // Çoğu röle kartı AKTİF-DÜŞÜK'tür (idle = HIGH, aktif = LOW).
+    // Kapı açılmıyorsa bu iki değeri ters çevir (OPEN=1, CLOSE=0).
+    OPEN_OUTPUT: 0,     // LOW  -> röle çeker, kapı açılır
+    CLOSE_OUTPUT: 1,    // HIGH -> röle bırakır, kapı kapanır
 
-        let timer = null;
-        const statusEl = document.getElementById('status');
-        const btnWomen = document.getElementById('btnWomen');
-        const btnMen = document.getElementById('btnMen');
+    HOLD_SECONDS: 1,          // donanım tarafında otomatik kapanma süresi
+    REQUEST_TIMEOUT_MS: 6000, // tek istek için üst sınır
+    COOLDOWN_MS: 1200,        // butonların tekrar aktif olma süresi
+    STATUS_RESET_MS: 2500     // "Hazır" yazısına dönüş
+};
+/* ============================================ */
 
-        // PIN kontrolü
-        function checkPin() {
-            const input = document.getElementById('pinInput');
-            const error = document.getElementById('pinError');
-            if (input.value === SECRET_PIN) {
-                document.getElementById('pinScreen').style.display = 'none';
-                document.getElementById('mainApp').style.display = 'block';
-                error.textContent = '';
-            } else {
-                error.textContent = '❌ Yanlış şifre, tekrar deneyin.';
-                input.value = '';
-                input.focus();
-            }
-        }
+const pinScreen = document.getElementById('pinScreen');
+const mainApp   = document.getElementById('mainApp');
+const pinInput  = document.getElementById('pinInput');
+const pinError  = document.getElementById('pinError');
+const statusEl  = document.getElementById('status');
+const btnWomen  = document.getElementById('btnWomen');
+const btnMen    = document.getElementById('btnMen');
+const allBtns   = [btnWomen, btnMen];
 
-        document.getElementById('pinInput').addEventListener('keydown', (e) => {
-            if (e.key === 'Enter') checkPin();
-        });
+let busy = false;
+let statusTimer = null;
 
-        // Kapıyı tetikle (belirtilen pin'de AÇ -> 1sn sonra KAPA)
-        function triggerDoor(label, pin) {
-            // Önceki zamanlayıcıyı temizle
-            if (timer) {
-                clearTimeout(timer);
-                timer = null;
-            }
+/* ---------------- Yardımcılar ---------------- */
 
-            // Tüm butonları devre dışı bırak (spam önleme)
-            btnWomen.disabled = true;
-            btnMen.disabled = true;
+function setStatus(text, cls) {
+    if (statusTimer) { clearTimeout(statusTimer); statusTimer = null; }
+    statusEl.textContent = text;
+    statusEl.className = cls || '';
+}
 
-            // 1. AÇ komutu (output=2)
-            setOutput(pin, 2)
-                .then(() => {
-                    statusEl.textContent = `🚪 ${label} (Pin ${pin}) AÇILDI, 1 saniye sonra kapanacak...`;
-                    statusEl.className = 'status-success';
+function resetStatusLater(ms) {
+    if (statusTimer) clearTimeout(statusTimer);
+    statusTimer = setTimeout(() => setStatus('Hazır'), ms);
+}
 
-                    // 2. 1 saniye sonra KAPA (output=1)
-                    timer = setTimeout(() => {
-                        setOutput(pin, 1)
-                            .then(() => {
-                                statusEl.textContent = `🔒 ${label} (Pin ${pin}) kapandı.`;
-                                statusEl.className = 'status-closing';
-                                btnWomen.disabled = false;
-                                btnMen.disabled = false;
-                            })
-                            .catch(err => {
-                                statusEl.textContent = `❌ Kapatma hatası (Pin ${pin}): ${err.message}`;
-                                statusEl.className = 'status-error';
-                                btnWomen.disabled = false;
-                                btnMen.disabled = false;
-                            });
-                        timer = null;
-                    }, HOLD_TIME); // 1 saniye
-                })
-                .catch(err => {
-                    statusEl.textContent = `❌ Açma hatası (Pin ${pin}): ${err.message}`;
-                    statusEl.className = 'status-error';
-                    btnWomen.disabled = false;
-                    btnMen.disabled = false;
-                });
-        }
+function setButtons(enabled) {
+    allBtns.forEach(b => { b.disabled = !enabled; });
+}
 
-        // Teleduino API'sine istek atan fonksiyon (pin parametresi eklendi)
-        function setOutput(pin, outputValue) {
-            const url = `${BASE_URL}?k=${API_KEY}&r=setDigitalOutput&pin=${pin}&output=${outputValue}&expire_time=0&save=1`;
-            return fetch(url)
-                .then(res => {
-                    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-                    return res.json();
-                })
-                .then(data => {
-                    if (data.status === 200 && data.response?.result === 1) {
-                        return true;
-                    } else {
-                        throw new Error(data.message || 'API cevabı başarısız');
-                    }
-                });
-        }
-    </script>
+function vibrate(pattern) {
+    if (navigator.vibrate) navigator.vibrate(pattern);
+}
+
+/* ---------------- PIN kontrolü ---------------- */
+
+function checkPin() {
+    if (pinInput.value === CFG.SECRET_PIN) {
+        sessionStorage.setItem('cihangir_auth', '1');
+        unlock();
+    } else {
+        pinError.textContent = '❌ Yanlış şifre, tekrar deneyin.';
+        pinInput.value = '';
+        pinInput.focus();
+        vibrate(120);
+    }
+}
+
+function unlock() {
+    pinScreen.style.display = 'none';
+    mainApp.style.display   = 'block';
+    pinError.textContent    = '';
+    pinInput.value          = '';
+}
+
+pinBtn.addEventListener('click', checkPin);
+pinInput.addEventListener('keydown', e => { if (e.key === 'Enter') checkPin(); });
+
+// Sayfa yenilenirse tekrar PIN sormasın (sekme kapanınca silinir)
+if (sessionStorage.getItem('cihangir_auth') === '1') unlock();
+
+/* ---------------- Teleduino çağrısı ---------------- */
+
+/**
+ * Pini sürer.
+ * expireTime > 0 ise Teleduino pini belirtilen saniye sonra
+ * ÖNCEKİ durumuna döndürür — tarayıcı kapansa bile kapı kapanır.
+ */
+async function setOutput(pin, output, expireTime = 0) {
+    const url = `${CFG.BASE_URL}?k=${encodeURIComponent(CFG.API_KEY)}`
+              + `&r=setDigitalOutput`
+              + `&pin=${encodeURIComponent(pin)}`
+              + `&output=${encodeURIComponent(output)}`
+              + `&expire_time=${encodeURIComponent(expireTime)}`
+              + `&save=0`;
+
+    const ctrl  = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), CFG.REQUEST_TIMEOUT_MS);
+
+    let data;
+    try {
+        const res = await fetch(url, { signal: ctrl.signal, cache: 'no-store' });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        data = await res.json();
+    } catch (err) {
+        if (err.name === 'AbortError') throw new Error('Zaman aşımı (sunucu yanıt vermedi)');
+        throw err;
+    } finally {
+        clearTimeout(timer);
+    }
+
+    if (Number(data?.status) === 200 && Number(data?.response?.result) === 1) {
+        return true;
+    }
+    throw new Error(data?.message || 'API isteği başarısız');
+}
+
+/* ---------------- Kapı tetikleme ---------------- */
+
+async function triggerDoor(label, pin) {
+    if (busy) return;
+    busy = true;
+    setButtons(false);
+    setStatus(`⏳ ${label} açılıyor...`, 'status-loading');
+    vibrate(30);
+
+    try {
+        // AÇ: expire_time sayesinde donanım HOLD_SECONDS sonra kendisi kapatır
+        await setOutput(pin, CFG.OPEN_OUTPUT, CFG.HOLD_SECONDS);
+
+        setStatus(`🚪 ${label} açıldı — ${CFG.HOLD_SECONDS} sn sonra kapanacak`, 'status-success');
+        vibrate([20, 60, 20]);
+
+        // Bilgi amaçlı: kapanış bilgisini gecikmeli göster
+        setTimeout(() => {
+            if (!busy) return;
+            setStatus(`🔒 ${label} kapatıldı`, 'status-closing');
+            resetStatusLater(CFG.STATUS_RESET_MS);
+        }, CFG.HOLD_SECONDS * 1000 + 300);
+
+    } catch (err) {
+        setStatus(`❌ ${label}: ${err.message}`, 'status-error');
+        vibrate([80, 50, 80]);
+        // Güvenlik: açma isteği yarıda kaldıysa kapatmayı dene
+        setOutput(pin, CFG.CLOSE_OUTPUT, 0).catch(() => {});
+        resetStatusLater(CFG.STATUS_RESET_MS);
+
+    } finally {
+        // Butonlar her durumda geri açılır (catch içinde tekrar etmeye gerek yok)
+        setTimeout(() => {
+            busy = false;
+            setButtons(true);
+        }, CFG.COOLDOWN_MS);
+    }
+}
+
+allBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+        triggerDoor(btn.dataset.label, btn.dataset.pin);
+    });
+});
+</script>
 </body>
 </html>
