@@ -125,7 +125,6 @@
 </head>
 <body>
 
-<!-- ================= PIN EKRANI ================= -->
 <div id="pinScreen">
     <h2>🔐 Yetki Kodu</h2>
     <input type="password" id="pinInput" maxlength="6"
@@ -134,7 +133,6 @@
     <div id="pinError"></div>
 </div>
 
-<!-- ================= ANA UYGULAMA ================= -->
 <div id="mainApp">
     <h1>🚪 Cihangir</h1>
     <div class="sub">Kapı Otomatı</div>
@@ -155,19 +153,20 @@ const CFG = {
 
     SECRET_PIN: "1234",
 
-    // Röle seviyeleri (kapı açılmıyorsa 0 ve 1'i ters çevir)
-    OPEN_OUTPUT: 0,     // LOW  -> röle çeker, kapı açılır
-    CLOSE_OUTPUT: 1,    // HIGH -> röle bırakır, kapı kapanır
-
     REQUEST_TIMEOUT_MS: 6000,
     COOLDOWN_MS: 1200,
     STATUS_RESET_MS: 2500
 };
 
-// Her kapı: pin numarası ve açık kalma süresi (saniye)
+/*
+   Her kapının kendi AÇ / KAPA sinyal seviyesi.
+   Aktif-DÜŞÜK röle : open=0, close=1  (yaygın)
+   Aktif-YÜKSEK röle: open=1, close=0
+   (Gerekirse men satırındaki değerleri ters çevir.)
+*/
 const DOORS = {
-    women: { label: 'Hanımlar', pin: 2, hold: 3 },  // 2 sn -> 3 sn
-    men:   { label: 'Erkekler', pin: 4, hold: 2 }   // pin 3 -> pin 4 (Arduino 4. pin)
+    women: { label: 'Hanımlar', pin: 2, hold: 3, openOutput: 0, closeOutput: 1 },
+    men:   { label: 'Erkekler', pin: 4, hold: 3, openOutput: 0, closeOutput: 1 }
 };
 /* ============================================ */
 
@@ -182,29 +181,20 @@ const allBtns   = [btnWomen, btnMen];
 
 let busy = false;
 let statusTimer = null;
-
-/* ---------------- Yardımcılar ---------------- */
+let closeTimer  = null;
 
 function setStatus(text, cls) {
     if (statusTimer) { clearTimeout(statusTimer); statusTimer = null; }
     statusEl.textContent = text;
     statusEl.className = cls || '';
 }
-
 function resetStatusLater(ms) {
     if (statusTimer) clearTimeout(statusTimer);
     statusTimer = setTimeout(() => setStatus('Hazır'), ms);
 }
+function setButtons(enabled) { allBtns.forEach(b => { b.disabled = !enabled; }); }
 
-function setButtons(enabled) {
-    allBtns.forEach(b => { b.disabled = !enabled; });
-}
-
-function vibrate(pattern) {
-    if (navigator.vibrate) navigator.vibrate(pattern);
-}
-
-/* ---------------- PIN kontrolü ---------------- */
+/* ---------------- PIN ---------------- */
 
 function checkPin() {
     if (pinInput.value === CFG.SECRET_PIN) {
@@ -214,37 +204,29 @@ function checkPin() {
         pinError.textContent = '❌ Yanlış şifre, tekrar deneyin.';
         pinInput.value = '';
         pinInput.focus();
-        vibrate(120);
+        if (navigator.vibrate) navigator.vibrate(120);
     }
 }
-
 function unlock() {
     pinScreen.style.display = 'none';
     mainApp.style.display   = 'block';
     pinError.textContent    = '';
     pinInput.value          = '';
 }
-
 document.getElementById('pinBtn').addEventListener('click', checkPin);
 pinInput.addEventListener('keydown', e => { if (e.key === 'Enter') checkPin(); });
-
-// Sayfa yenilenirse tekrar PIN sormasın (sekme kapanınca silinir)
 if (sessionStorage.getItem('cihangir_auth') === '1') unlock();
 
-/* ---------------- Teleduino çağrısı ---------------- */
+/* ---------------- Teleduino ---------------- */
 
-/**
- * Pini sürer.
- * expireTime > 0 ise Teleduino pini belirtilen saniye sonra
- * ÖNCEKİ durumuna döndürür — tarayıcı kapansa bile kapı kapanır.
- */
-async function setOutput(pin, output, expireTime = 0) {
+async function setOutput(pin, output) {
     const url = `${CFG.BASE_URL}?k=${encodeURIComponent(CFG.API_KEY)}`
               + `&r=setDigitalOutput`
               + `&pin=${encodeURIComponent(pin)}`
               + `&output=${encodeURIComponent(output)}`
-              + `&expire_time=${encodeURIComponent(expireTime)}`
               + `&save=0`;
+
+    console.log(`[TELEDUINO] pin=${pin} output=${output} → ${url}`);
 
     const ctrl  = new AbortController();
     const timer = setTimeout(() => ctrl.abort(), CFG.REQUEST_TIMEOUT_MS);
@@ -255,56 +237,59 @@ async function setOutput(pin, output, expireTime = 0) {
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         data = await res.json();
     } catch (err) {
-        if (err.name === 'AbortError') throw new Error('Zaman aşımı (sunucu yanıt vermedi)');
+        if (err.name === 'AbortError') throw new Error('Zaman aşımı');
         throw err;
     } finally {
         clearTimeout(timer);
     }
-
-    if (Number(data?.status) === 200 && Number(data?.response?.result) === 1) {
-        return true;
-    }
+    if (Number(data?.status) === 200 && Number(data?.response?.result) === 1) return true;
     throw new Error(data?.message || 'API isteği başarısız');
 }
 
 /* ---------------- Kapı tetikleme ---------------- */
 
 async function triggerDoor(doorKey) {
-    if (busy) return;
-
+    if (busy) { console.warn('[triggerDoor] busy, ignored'); return; }
     const door = DOORS[doorKey];
     if (!door) return;
+
+    if (closeTimer) { clearTimeout(closeTimer); closeTimer = null; }
 
     busy = true;
     setButtons(false);
     setStatus(`⏳ ${door.label} açılıyor...`, 'status-loading');
-    vibrate(30);
+    if (navigator.vibrate) navigator.vibrate(30);
 
     try {
-        // AÇ: expire_time sayesinde donanım 'hold' saniye sonra kendisi kapatır
-        await setOutput(door.pin, CFG.OPEN_OUTPUT, door.hold);
+        console.log(`[triggerDoor] ${doorKey} AÇILIYOR (pin ${door.pin})`);
+        await setOutput(door.pin, door.openOutput);
+        console.log(`[triggerDoor] ${doorKey} AÇILDI, ${door.hold}sn sonra kapanacak`);
 
         setStatus(`🚪 ${door.label} açıldı — ${door.hold} sn sonra kapanacak`, 'status-success');
-        vibrate([20, 60, 20]);
+        if (navigator.vibrate) navigator.vibrate([20, 60, 20]);
 
-        // Bilgi amaçlı: kapanış bilgisini gecikmeli göster
-        setTimeout(() => {
-            setStatus(`🔒 ${door.label} kapatıldı`, 'status-closing');
-            resetStatusLater(CFG.STATUS_RESET_MS);
-        }, door.hold * 1000 + 300);
+        closeTimer = setTimeout(async () => {
+            closeTimer = null;
+            console.log(`[triggerDoor] ${doorKey} KAPANIYOR (pin ${door.pin})`);
+            try {
+                await setOutput(door.pin, door.closeOutput);
+                setStatus(`🔒 ${door.label} kapatıldı`, 'status-closing');
+                resetStatusLater(CFG.STATUS_RESET_MS);
+            } catch (err) {
+                console.error('[close error]', err);
+                setStatus(`❌ Kapatma hatası: ${err.message}`, 'status-error');
+                resetStatusLater(CFG.STATUS_RESET_MS);
+            }
+        }, door.hold * 1000);
 
     } catch (err) {
+        console.error('[open error]', err);
         setStatus(`❌ ${door.label}: ${err.message}`, 'status-error');
-        vibrate([80, 50, 80]);
-        // Güvenlik: açma yarıda kaldıysa kapatmayı dene
-        setOutput(door.pin, CFG.CLOSE_OUTPUT, 0).catch(() => {});
+        if (navigator.vibrate) navigator.vibrate([80, 50, 80]);
+        setOutput(door.pin, door.closeOutput).catch(() => {});
         resetStatusLater(CFG.STATUS_RESET_MS);
-
     } finally {
-        setTimeout(() => {
-            busy = false;
-            setButtons(true);
-        }, CFG.COOLDOWN_MS);
+        setTimeout(() => { busy = false; setButtons(true); }, CFG.COOLDOWN_MS);
     }
 }
 
